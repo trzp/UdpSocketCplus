@@ -17,18 +17,20 @@ class UdpSocket
 private:
 	SOCKET sock;
 	bool is_server = false;
-	
-private:
-	SOCKADDR_IN gen_addr(char ip[], short port);
+
+public:
+	SOCKADDR_IN remote_addr;
 
 public:
 	~UdpSocket();
-	UdpSocket(string local_ip,short local_port);	//作为服务端是绑定到的ip和端口（接受数据，也可发送数据）
-	UdpSocket();	//仅作为客户端（发送数据）
+	UdpSocket();
 
-	int send_to(char* buf, int send_len,string ip, short port);
-	int send_to(string buf, string ip, short port);
-	int recv_from(char* buf,SOCKADDR_IN* addr);	//buf 接受数据的buffer, addr远程发送数据计算机的地址
-	int recv_from(char* buf);
+	void srv_bind(string local_ip, short local_port);	//服务器绑定。作为服务器使用时调用。
+	void set_remote_addr(string remote_ip, short port);	//设置远程地址。在send前可以随时调用，更改目标地址。
+
+	int send(char* buf, int send_len);
+	int send(string buf);
+	int recv(char* buf,SOCKADDR_IN* addr);	//buf 接受数据的buffer, addr远程发送数据计算机的地址
+	int recv(char* buf);
 	void close();	//析构时会被调用，close可以不被显示调用
 };

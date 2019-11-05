@@ -1,35 +1,6 @@
 #include "UdpSocket.h"
 
-
-UdpSocket::UdpSocket(string local_ip,short local_port)
-{
-	WSAData wsd;
-	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0)
-	{
-		throw "[Error] WSA startup failure";
-	}
-
-	this->sock = socket(AF_INET, SOCK_DGRAM,0);
-	if (sock == SOCKET_ERROR) 
-	{
-		throw WSAGetLastError();
-	}
-
-	char* tem_ip = (char*)local_ip.data();
-	SOCKADDR_IN local_addr;
-	local_addr.sin_family = AF_INET;
-	local_addr.sin_port = htons(local_port);
-	local_addr.sin_addr.s_addr = inet_addr(tem_ip);
-
-	//绑定到指定地址
-	if (bind(this->sock, (SOCKADDR*)& local_addr, sizeof(local_addr)) == SOCKET_ERROR)
-	{
-		throw "[socket error] bing error";
-	}
-	this->is_server = true;
-}
-
-UdpSocket::UdpSocket()
+UdpSocket::UdpSocket() //基本初始化
 {
 	WSAData wsd;
 	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0)
@@ -44,21 +15,33 @@ UdpSocket::UdpSocket()
 	}
 }
 
-SOCKADDR_IN UdpSocket::gen_addr(char ip[], short port)
+void UdpSocket::srv_bind(string local_ip, short local_port)
 {
-	SOCKADDR_IN addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.S_un.S_addr = inet_addr(ip);
-	return addr;
+	char* tem_ip = (char*)local_ip.data();
+	SOCKADDR_IN local_addr;
+	local_addr.sin_family = AF_INET;
+	local_addr.sin_port = htons(local_port);
+	local_addr.sin_addr.s_addr = inet_addr(tem_ip);
+
+	//绑定到指定地址
+	if (bind(this->sock, (SOCKADDR*)& local_addr, sizeof(local_addr)) == SOCKET_ERROR)
+	{
+		throw "[socket error] bing error";
+	}
+	this->is_server = true;
 }
 
-int UdpSocket::send_to(char* buf, int send_len, string ip, short port)
+void UdpSocket::set_remote_addr(string local_ip, short port)
 {
-	SOCKADDR_IN addr;
-	char* cip = (char*)ip.data();
-	addr = this->gen_addr(cip, port);
-	int nRet = sendto(this->sock, buf, send_len, 0, (SOCKADDR*)& addr, sizeof(SOCKADDR));
+	char* cip = (char*)local_ip.data();
+	this->remote_addr.sin_family = AF_INET;
+	this->remote_addr.sin_port = htons(port);
+	this->remote_addr.sin_addr.S_un.S_addr = inet_addr(cip);
+}
+
+int UdpSocket::send(char* buf, int send_len)
+{
+	int nRet = sendto(this->sock, buf, send_len, 0, (SOCKADDR*)& this->remote_addr, sizeof(SOCKADDR));
 	if (nRet == SOCKET_ERROR)
 	{
 		cout << "[sendto Error] " << WSAGetLastError() << endl;
@@ -70,15 +53,11 @@ int UdpSocket::send_to(char* buf, int send_len, string ip, short port)
 	}
 }
 
-int UdpSocket::send_to(string buf, string ip, short port)
+int UdpSocket::send(string buf)
 {
-	char* cip = (char*)ip.data();
 	char* tem = (char*)buf.data();
 
-	SOCKADDR_IN addr;
-	addr = this->gen_addr(cip, port);
-
-	int nRet = sendto(this->sock, tem, buf.length(), 0, (SOCKADDR*)&addr, sizeof(SOCKADDR));
+	int nRet = sendto(this->sock, tem, buf.length(), 0, (SOCKADDR*)&this->remote_addr, sizeof(SOCKADDR));
 	if (nRet == SOCKET_ERROR) 
 	{
 		cout << "[sendto Error] " << WSAGetLastError() << endl;
@@ -90,7 +69,7 @@ int UdpSocket::send_to(string buf, string ip, short port)
 	}
 }
 
-int UdpSocket::recv_from(char* buf,SOCKADDR_IN* addr)
+int UdpSocket::recv(char* buf,SOCKADDR_IN* addr)
 {
 	if (!this->is_server)
 	{
@@ -112,10 +91,10 @@ int UdpSocket::recv_from(char* buf,SOCKADDR_IN* addr)
 	}
 }
 
-int UdpSocket::recv_from(char* buf)
+int UdpSocket::recv(char* buf)
 {
 	SOCKADDR_IN addr;
-	return this->recv_from(buf, &addr);
+	return this->recv(buf, &addr);
 }
 
 void UdpSocket::close()
